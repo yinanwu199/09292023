@@ -1,0 +1,179 @@
+---
+title: ""
+output: html_document
+date: "2023-09-29"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r}
+#Read and clean the Mr. Trash Wheel sheet:
+
+#specify the sheet in the Excel file and to omit non-data entries (rows with notes / figures; columns #containing notes) using arguments in read_excel
+#use reasonable variable names
+
+library(dplyr)
+library(readxl)
+library(tidyverse)
+
+Trash_Wheel_Collection_Data <- read_excel("202207 Trash Wheel Collection Data.xlsx", 
+                                          sheet = "Mr. Trash Wheel",
+                                          range = "A3:N550", 
+                                          col_names = c("Dumpster", "Month", "Year", "Date", "Weight.tons",                                                                 "Volume.cubic_yards", "Plastic.Bottles",
+                                                        "Polystyrene", 
+                                                        "Cigarette.Butts", "Glass.Bottles", 
+                                                        "Grocery.Bags", "Chip.Bags", 
+                                                        "Sports.Balls", "Homes.Powered"))
+
+names(Trash_Wheel_Collection_Data)
+
+# omit rows that do not include dumpster-specific data
+table(is.na(Trash_Wheel_Collection_Data$Dumpster))
+
+#Trash_Wheel_Collection_Data <- Trash_Wheel_Collection_Data[!is.na(Trash_Wheel_Collection_Data$Dumpster),]
+
+Trash_Wheel_Collection_Data.x <- Trash_Wheel_Collection_Data %>%   
+                                   drop_na(Dumpster) %>% 
+                                   mutate(
+                                          homes_powered = Weight.tons * 500 / 30,
+                                          origin = "Trash_Wheel" 
+                                          )
+```
+
+
+The data include a column for the (approximate) number of homes powered. This calculation is described in the Homes powered note, but not applied to every row in the dataset. Update the data to include a new homes_powered variable based on this calculation.
+
+```{r}
+
+Professor_Trash_Wheel_Collection_Data <- read_excel("202207 Trash Wheel Collection Data.xlsx", 
+                                          sheet = "Professor Trash Wheel",
+                                          range = "A3:M97", 
+                                          col_names = c("Dumpster", "Month", "Year", "Date", "Weight.tons",                                                                                             "Volume.cubic_yards", "Plastic.Bottles",
+                                                        "Polystyrene", 
+                                                        "Cigarette.Butts", "Glass.Bottles", 
+                                                        "Grocery.Bags", "Chip.Bags", "Homes.Powered"))
+
+Professor_Trash_Wheel_Collection_Data.x <- Professor_Trash_Wheel_Collection_Data %>%
+                                           drop_na(Dumpster) %>%
+                                           mutate(homes_powered = Weight.tons * 500 / 30,
+                                           origin = "Professor_Trash_Wheel" )
+
+```
+
+```{r}
+
+Gwynnda_Trash_Wheel_Collection_Data <- read_excel("202207 Trash Wheel Collection Data.xlsx", 
+                                          sheet = "Gwynnda Trash Wheel",
+                                          range = "A3:K111",
+                                          col_names = c("Dumpster", "Month", "Year", "Date", "Weight.tons",                                                                                            "Volume.cubic_yards", "Plastic.Bottles",
+                                                        "Polystyrene", 
+                                                        "Cigarette.Butts", "Plastic.Bags", "Homes.Powered"))
+
+Gwynnda_Trash_Wheel_Collection_Data.x <- Gwynnda_Trash_Wheel_Collection_Data  %>%
+                                         drop_na(Dumpster) %>%
+                                         mutate(homes_powered = Weight.tons * 500 / 30,
+                                         origin = "Gwynnda_Trash_Wheel" )
+#1990 , "1990" -> 1990 
+
+Trash_Wheel_Collection_Data.x$Year <- as.numeric(Trash_Wheel_Collection_Data.x$Year)
+
+data <- bind_rows(Trash_Wheel_Collection_Data.x, Professor_Trash_Wheel_Collection_Data.x, Gwynnda_Trash_Wheel_Collection_Data.x)
+
+names(data)
+nrow(data)
+ncol(data)
+dim(data)
+table(data$origin)
+
+  data  %>%
+  filter(origin == "Professor_Trash_Wheel") %>%
+  pull(Weight.tons) %>%
+  sum() 
+  
+  data %>%
+  filter(origin == "Gwynnda_Trash_Wheel" & Year == "2021" & Month == "July") %>%
+  pull(Cigarette.Butts) %>%
+  sum()
+  
+  data %>%
+  group_by(origin) %>% 
+  summarise(sum=sum(Weight.tons),
+            mean=mean(Weight.tons))
+  
+#abc = "whatisyourname"
+#acd <- 5 
+#acd1 <- 6
+#data$Year == "2021"
+#NA == 5
+#TRUE FALSE
+#abc == acd 
+#acd1 > acd
+#6 > 5
+#2 > 3
+```
+
+Use a similar process to import, clean, and organize the data for Professor Trash Wheel and Gwynnda, and combine these with the Mr. Trash Wheel dataset to produce a single tidy dataset. To keep track of which Trash Wheel is which, you may need to add an additional variable to all datasets before combining.
+
+Write a paragraph about these data; you are encouraged to use inline R. Be sure to note the number of observations in the resulting dataset, and give examples of key variables. For available data, what was the total weight of trash collected by Professor Trash Wheel? What was the total number of cigarette butts collected by Gwynnda in July of 2021?
+
+after merging the data, we have 747 observations and 17 variables. The total weight of trash collected by Professor Trash Wheel is 190.12 and total number of cigarette butts collected by Gwynnda in July of 2021 is 16300.
+
+```{r}
+MCI_baseline <- read.csv("MCI_baseline.csv", skip = 1)
+```
+
+
+Import, clean, and tidy the dataset of baseline demographics. Ensure that sex and APOE4 carrier status are appropriate encoded (i.e. not numeric), and remove any participants who do not meet the stated inclusion criteria (i.e. no MCI at baseline). Discuss important steps in the import process and relevant features of the dataset. How many participants were recruited, and of these how many develop MCI? What is the average baseline age? What proportion of women in the study are APOE4 carriers?
+
+we use read.csv to read the raw data, however the first contains the metadata, which describes the information of encoding.. male = 1 female = 0. Thus we read the data from the second line command (skip =1).  
+
+```{r}
+#Ensure that sex and APOE4 carrier status are appropriate encoded (i.e. not numeric), 
+MCI_baseline.x <- MCI_baseline %>% 
+                  mutate(Sex = ifelse(Sex == 1, "Male", "Female"),
+                         apoe4 = ifelse(apoe4 == 1, "carriers", "Non-carriers"))
+
+MCI_baseline.x %>% pull(Current.Age) %>% mean()
+  
+MCI_baseline.x %>% filter(Sex == "Female") %>% pull(apoe4) %>% table() #63/(63+148)
+
+#NA, "Na"
+#!is.na(mci_amyloid$Baseline) # is na?
+# mutate # create
+# filter # id: 1,2,3,4 id 
+# group by
+# pull variable
+# sum/mean/median 
+#mci_amyloid.x <- mci_amyloid %>% filter(!is.na(Baseline))
+```
+
+Similarly, import, clean, and tidy the dataset of longitudinally observed biomarker values; comment on the steps on the import process and the features of the dataset.
+
+```{r}
+mci_amyloid <- read.csv("mci_amyloid.csv", skip = 1) # .txt .csv. xlsx. 
+
+# thanks
+mci_amyloid.x <- mci_amyloid %>% 
+                 drop_na(Baseline) %>% # filter(!is.na(Baseline)) # remove non applicable value
+                 filter(Baseline != "Na") # remove the artifical na value
+
+
+```
+
+Check whether some participants appear in only the baseline or amyloid datasets, and comment on your findings. Combine the demographic and biomarker datasets so that only participants who appear in both datasets are retained, and briefly describe the resulting dataset; export the result as a CSV to your data directory
+
+```{r}
+data <- MCI_baseline.x %>%
+         rename(Study.ID = ID) %>%
+         left_join(mci_amyloid.x, by = "Study.ID")
+
+write.csv(data, "modified.data.csv")
+
+
+```
+
+According to the exclusion criterion, we exclude the patients with missing baseline value. After combing the baseline and amyloid data, we have a dataset with 483 observations and 11 variables in a wide format. The data constains demograhpic charactors like sex and age, as well as baseline data and 4 visits for β 42/40 ratio . 
